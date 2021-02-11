@@ -1,0 +1,8 @@
+types:
+player: is the player
+pull block: pullable
+push block: pushable
+ghost block: only pushable when theres a block nearby (no diag) (wall when no block around)
+wall: cannot be pushed
+goal: get the player there
+slime block: cannot be walked through and pulled/pushed with other blocks

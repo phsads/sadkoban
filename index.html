@@ -1,0 +1,594 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sadkoban</title>
+    <link rel="icon" href="player2.png" type="img" sizes="16x16">
+    <style>
+        * {
+            text-align:center
+        }
+    </style>
+</head>
+<body onload="start()" >
+    <div>
+        <p id="tip" style="font-weight: normal;margin:2">Welcome to Sadkoban, a "mod" of Soukoban made by phsads. Press WASD to move. Your objective is to get to the flag (and not push the blocks to the correct place)</p>
+        <div id="lInfo" style="margin:2"><button onclick="moveLevel(-1,false)">-</button> &nbsp;<span id="level">Level 1</span>&nbsp; <button onclick="moveLevel(1,false)">+</button></div>
+        <div hidden id="ixport">
+            <button onclick="exportL()">Export</button>
+            <button onclick="importL()">Import</button>
+            <button onclick="play()">Play</button>
+            <br>
+            <div id="objs" hidden>
+        <br>
+        <img src="empty.png" id="empty" onclick="select(0)">
+        <img src="player.png" id="player" onclick="select(1)">
+        <img src="box.png" id="push" onclick="select(2)">
+        <img src="wall.png" id="wall" onclick="select(3)">
+        <img src="goal.png" id="goal" onclick="select(4)">
+        <img src="pull.png" id="pull" onclick="select(5)">
+        <img src="ghost.png" id="ghost" onclick="select(6)">
+        <img src="slime.png" id="slime" onclick="select(7)">
+            </div>
+        </div>
+        <div id="credits" hidden style="font-size:larger">Congratulations! You beat the game. If you want more content then you can make your own levels in the editor, or wait until the next update.
+            <p>Credits:</p>
+            <p>phsads (code, sprites, maps, ideas, playtest)</p>
+            <p>josephphsads (my friend, sprites, maps, concept, playtest)</p>
+            <p>freesound.org (audio)</p>
+            <p>stackoverflow.com (code)</p>
+            <button id="back">Go back</button>
+        </div>
+    <canvas id="canvas" width="800" height="600" tabindex="1" onclick="place(event)"></canvas>
+    <table id="settingsTab" style="font-size:225%;background-color:#F0F0F0;margin-left:auto;margin-right:auto;width:600px;height:400px;top:-1400px;position:relative;transition:all 0.46s;background:rgba(240,240,240,0)">
+        <tr>
+            <td>Audio: <input id="audioSlider" type="range" min="0" max="100" value="30" style="width:60%">&nbsp;<span id="noise">30</span></td>
+        </tr>
+        <tr>
+            <td style="text-align:center"><button style="color:red;font-size:140%;font-family: Arial, Helvetica, sans-serif;border:0px;background:rgba(0,0,0,0);-webkit-user-select: none;-moz-user-select: none;-ms-user-select: none;user-select: none; " onclick="settings()">x</button></td>
+        </tr>
+    </table>
+    <div style="top:-400px;position:relative"> <br><br>
+    <div>
+        <image id="editor" src="editor.png" onclick="toggleeditor()"></image> &nbsp; &nbsp; &nbsp;
+    <image id="settings" src="settings.png" onclick="settings()"></image>
+    </div></div>
+    <audio loop id="menu">
+            <source src="" type="audio/wav">
+    </audio>
+    <audio id="ppul">
+            <source src="ppul.wav" type="audio/wav">
+    </audio>
+    <audio id="move1">
+            <source src="grass1.wav" type="audio/wav">
+    </audio>
+    <audio id="move2">
+            <source src="grass2.wav" type="audio/wav">
+    </audio>
+    </div>
+</body>
+<script>
+    //0 = nothing
+//1 = player
+//2 = push
+//3 = wall
+//4 = goal
+//5 = pull
+//6 = ghost
+//7 = slime
+//help
+//variables:
+var highestLevel
+var oldEditorSelect
+var maps
+var custom = [
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+]
+var save = btoa(custom)
+var editor = {
+    active:false,
+    creating:false,
+    use:0,
+}
+var tips = {
+    map0:"How did we get here?",
+    map1: "Welcome to Sadkoban, a 'mod' of Soukoban made by phsads. Press WASD to move. Your objective is to get to the flag (and not push the blocks to the correct place). If you can't move, click on the canvas.",
+    map2: "Pushable blocks can be pushed in a chain.",
+    map3: "Sometimes you can get trapped by pushable blocks if you're not careful.",
+    map4: "Pullable blocks are metal crates, they can't be pushed.",
+    map5: "You can both push and pull blocks at the same time.",
+    map6: "Pullable blocks can be pulled in a chain",
+    map7: "Implementing the pull and push mechanic is the 2 hardest challenges I faced through while making this game.",
+    map8: "The first 8 levels uses: grass, player, pushable blocks, flag and pullable blocks.",
+    map9: "Ghost blocks can't be walked through, have a light gray color and only pushable if a 'solid' block is near.",
+    map10: "Ghost blocks are pushable if the 'solid' block neighbours it vertically or horizontally.",
+    map11: "Ghost blocks and pushable blocks can be pushed together in a chain.",
+    map12: "Take a break before learning another mechanic.",
+    map13: "This level took way longer than expected to make.",
+    map14: "You can control many characters at once.",
+    map15: "Things operate from up to down, left to right. Also characters 'eat' each other when the walk into each other.",
+    map16:"This is the 16th level.",
+    map17:"Sometimes the solution is unexpected.",
+    map18:"This is my first <canvas> HTML game.",
+    map19:"Some of the levels are made by my friend (see in credits).",
+    map20:"80% of the way there!",
+    map21:"Slime blocks can't be walked through and is pushable/pullable with other blocks.",
+    map22:"Don't worry, this isn't the last iteration of level 10.",
+    map23:"Level 23,24,25 is made in the same day.",
+    map24:"Level 22 already took long enough...",
+    map25:"!! Final level !!"
+}
+var names = ["Basics","Property","Spiral","Pull to Open","Precision","Lockpicking","Deja vu","Lock the Door","Key","Prison","Lockpicking pt.2","Maze","Gridstep","Containment Breach","Fragile Lock","Transfer",
+"Leads","Unlock","Turn","Chaotic Lock","Slimy","Gulag","Slime Prison","Dungeon","Finale"]
+var mHis = []
+var tMHis = []
+var img = {
+    push: document.getElementById("push"),
+    wall: document.getElementById("wall"),
+    empty: document.getElementById("empty"),
+    player: document.getElementById("player"),
+    goal: document.getElementById("goal"),
+    pull: document.getElementById("pull"),
+}
+var level = 0
+var currentState = []
+var ctx = document.getElementById("canvas").getContext("2d")
+var audio = 30
+//loading
+try {
+    highestLevel=JSON.parse(localStorage.getItem("sadkoban"))
+} catch (error) {
+    highestLevel = 1
+}
+function newLevel(a) {
+    localStorage.setItem("sadkoban",Math.min(Math.max(level+1,highestLevel),40))
+    highestLevel = Math.min(Math.max(level+1,highestLevel),40)
+    loadMaps()
+    level++
+    if(level<2){document.querySelector('[onclick="moveLevel(-1,false)"]').hidden=true}else{document.querySelector('[onclick="moveLevel(-1,false)"]').hidden=false} //bad code mpmeont
+    if(level===highestLevel){document.querySelector('[onclick="moveLevel(1,false)"]').hidden=true}else{document.querySelector('[onclick="moveLevel(1,false)"]').hidden=false}
+    if(maps["map"+level]===undefined){
+        document.getElementById("canvas").hidden = true
+        document.getElementById("lInfo").hidden = true
+        document.getElementById("tip").hidden = true
+        document.getElementById("editor").hidden = true
+        document.getElementById("settings").hidden = true
+        document.getElementById("credits").hidden = false
+    } else {
+        currentState = maps["map"+level]
+        render(currentState)
+        document.getElementById("tip").textContent = tips["map"+level]
+        document.getElementById("level").textContent = "Level "+level+": " + names[level-1]
+        document.getElementById("canvas").hidden = false
+        document.getElementById("lInfo").hidden = false
+        document.getElementById("tip").hidden = false
+        document.getElementById("editor").hidden = false
+        document.getElementById("settings").hidden = false
+        document.getElementById("credits").hidden = true
+    }
+    a===undefined?mHis = []:0
+}
+function loadMaps() {
+    maps = {
+    map1:[
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,3,3,3,3,3,3,3,3,0,0,0,0,0,0],
+        [0,0,0,0,0,0,3,1,3,3,0,4,0,3,0,0,0,0,0,0],
+        [0,0,0,0,0,0,3,2,0,0,2,2,2,3,0,0,0,0,0,0],
+        [0,0,0,0,0,0,3,0,3,0,0,0,0,3,0,0,0,0,0,0],
+        [0,0,0,0,0,0,3,3,3,3,3,3,3,3,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    ],
+    map2:[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,3,3,3,3,3,3,3,3,3,0,0,0,0,0,0],[0,0,0,0,0,3,0,0,2,0,2,0,0,3,0,0,0,0,0,0],[0,0,0,0,0,3,1,0,2,3,2,0,0,3,0,0,0,0,0,0],[0,0,0,0,0,3,0,0,2,0,2,0,0,3,0,0,0,0,0,0],[0,0,0,0,0,3,3,3,3,3,3,0,0,3,0,0,0,0,0,0],[0,0,0,0,0,3,4,0,3,0,0,0,0,3,0,0,0,0,0,0],[0,0,0,0,0,3,0,0,2,0,0,0,0,3,0,0,0,0,0,0],[0,0,0,0,0,3,3,3,3,3,3,3,3,3,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]],
+    map3:[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,3,3,3,3,3,3,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,3,0,0,0,0,3,3,3,3,0,0,0,0,0,0,0],[0,0,0,0,3,0,2,0,0,3,4,0,3,0,0,0,0,0,0,0],[0,0,0,0,3,0,3,2,0,3,0,0,3,0,0,0,0,0,0,0],[0,0,0,0,3,0,3,1,3,3,0,2,3,0,0,0,0,0,0,0],[0,0,0,0,3,0,3,3,3,3,3,2,3,0,0,0,0,0,0,0],[0,0,0,0,3,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0],[0,0,0,0,3,3,3,3,3,3,3,3,3,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]],
+    map5:[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,3,3,3,3,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,3,3,3,0,0,3,3,3,0,0,0,0,0,0,0],[0,0,0,0,0,3,1,0,0,2,0,0,3,0,0,0,0,0,0,0],[0,0,0,0,0,3,3,3,3,0,0,0,3,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,3,3,3,5,3,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,3,4,3,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,3,3,3,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]],
+    map4:[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,3,3,3,3,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,3,1,0,3,3,3,3,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,3,0,0,5,0,0,3,3,3,0,0,0,0,0,0,0],
+        [0,0,0,0,3,0,0,5,0,0,0,0,3,0,0,0,0,0,0,0],
+        [0,0,0,0,3,0,0,5,0,0,0,4,3,0,0,0,0,0,0,0],
+        [0,0,0,0,3,3,3,3,3,3,3,3,3,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]],
+    map6:[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,3,3,3,0,0,0,3,3,3,0,0,0,0,0],[0,0,0,0,0,3,3,5,3,0,0,3,3,5,3,0,0,0,0,0],[0,0,0,0,3,3,5,5,3,3,3,3,5,5,3,0,0,0,0,0],[0,0,0,3,3,5,5,5,3,5,5,3,5,5,3,0,0,0,0,0],[0,0,0,3,4,5,5,5,5,5,5,5,5,5,3,0,0,0,0,0],[0,0,0,3,3,5,5,5,5,5,5,5,5,5,3,0,0,0,0,0],[0,0,0,0,3,0,0,0,0,0,0,0,0,0,3,0,0,0,0,0],[0,0,0,0,3,0,0,0,0,0,0,0,0,0,3,0,0,0,0,0],[0,0,0,0,3,0,0,0,0,0,0,0,0,0,3,0,0,0,0,0],[0,0,0,0,3,1,0,0,0,0,0,0,0,0,3,0,0,0,0,0],[0,0,0,0,3,3,3,3,3,3,3,3,3,3,3,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]],
+    map7:[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,3,3,3,3,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,3,1,0,3,3,3,3,3,3,0,0,0,0,0,0,0],[0,0,0,0,3,0,0,5,2,0,3,4,3,0,0,0,0,0,0,0],[0,0,0,0,3,0,0,5,2,0,0,0,3,0,0,0,0,0,0,0],[0,0,0,0,3,0,0,5,2,0,0,3,3,0,0,0,0,0,0,0],[0,0,0,0,3,3,3,3,3,3,3,3,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]],
+    map9:[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,3,3,3,3,3,3,3,3,3,3,3,3,0,0,0,0,0,0],[0,0,3,0,0,0,0,0,0,0,0,3,4,3,3,3,0,0,0,0],[0,0,3,0,0,0,5,0,0,0,0,0,6,0,0,3,0,0,0,0],[0,0,3,3,3,3,5,5,3,3,3,3,0,3,3,3,0,0,0,0],[0,0,3,0,0,0,0,2,0,0,0,3,3,3,0,0,0,0,0,0],[0,0,3,0,1,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0],[0,0,3,0,0,0,0,5,0,0,0,3,0,0,0,0,0,0,0,0],[0,0,3,3,3,3,3,3,3,3,3,3,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]],
+    map8:[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,3,3,3,3,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,3,0,4,3,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,3,3,3,5,2,3,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,3,0,0,2,5,3,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,3,0,3,0,0,3,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,3,0,3,0,5,3,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,3,0,0,1,0,3,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,3,3,3,0,0,3,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,3,3,3,3,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]],
+    map10:[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,5,0,3,3,3,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,3,4,3,3,3,0,0,0],[0,0,0,0,0,0,6,0,0,0,0,0,0,6,0,0,3,0,0,0],[0,0,0,0,0,6,0,6,0,0,0,0,3,4,3,3,3,0,0,0],[0,0,0,0,6,0,2,0,6,0,0,0,3,3,3,0,0,0,0,0],[0,0,0,0,0,6,0,6,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,6,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]],
+    map11:[[0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,3,0,0,0],[0,0,0,0,0,0,0,0,3,3,4,3,3,3,0,0,3,0,0,0],[0,0,0,0,0,0,0,0,0,3,3,3,3,3,0,3,3,3,3,0],[0,0,0,0,0,0,0,0,0,0,3,0,0,6,6,2,6,0,3,0],[0,0,0,0,0,0,0,0,0,0,3,3,3,3,0,3,3,0,3,0],[0,0,0,3,3,3,0,0,0,0,3,3,3,0,0,0,0,0,3,0],[0,0,0,3,0,3,0,0,0,0,3,0,3,0,0,0,0,0,3,0],[0,0,0,3,0,3,3,3,3,3,3,0,3,3,3,3,3,0,3,0],[3,3,3,3,6,3,0,0,0,3,3,6,3,0,0,0,3,0,3,0],[0,0,0,0,2,0,0,0,0,5,0,6,0,0,0,0,5,0,3,0],[0,3,3,3,6,3,3,0,3,3,3,6,3,3,0,3,3,3,3,0],[0,3,0,0,6,3,3,3,3,3,3,2,3,3,3,3,0,0,0,0],[0,3,0,5,0,0,0,0,3,0,0,0,0,0,0,3,0,0,0,0],[0,3,3,3,3,3,3,0,0,1,0,0,0,0,0,3,0,0,0,0],[0,0,0,0,0,0,0,0,5,3,3,3,3,3,3,3,0,0,0,0]],
+    map12:[[0,0,0,0,0,3,0,0,0,0,3,0,0,0,0,0,3,0,0,1],[0,3,3,3,0,0,0,3,3,0,3,0,3,0,3,3,3,0,3,3],[0,0,3,0,0,3,3,3,0,0,0,0,3,0,0,0,0,2,0,0],[3,0,3,0,3,3,0,0,5,3,3,3,3,0,3,3,3,0,3,0],[3,0,3,0,0,0,0,3,0,0,0,0,3,0,3,0,0,0,3,0],[3,3,3,3,3,3,3,3,3,3,0,3,3,0,0,0,3,3,3,0],[0,0,0,2,0,0,0,0,3,0,5,0,3,3,3,0,3,0,0,0],[0,3,0,2,0,0,3,0,5,0,3,0,0,3,0,0,3,0,3,0],[0,3,2,3,3,3,3,3,5,3,3,3,0,3,0,3,3,0,3,0],[0,3,0,3,0,0,0,0,0,3,3,0,0,0,5,0,0,0,3,0],[0,3,5,0,0,3,3,3,0,0,3,3,3,3,3,3,3,3,3,0],[3,3,2,0,3,3,0,3,3,0,3,0,3,0,0,0,0,0,3,0],[0,0,0,3,3,0,0,3,0,0,3,0,0,0,5,0,3,0,0,0],[0,3,0,3,3,3,0,0,0,0,0,0,3,6,3,3,3,3,0,3],[4,3,0,3,0,0,0,3,3,3,3,0,0,0,3,0,0,0,0,0]],
+    map13:[[0,2,0,5,0,2,0,2,0,2,0,2,0,5,0,6,0,2,0,2],[2,0,2,0,2,0,2,0,3,0,2,0,2,0,2,0,2,0,2,0],[0,3,0,2,0,5,0,3,0,3,0,2,0,2,0,5,0,6,0,2],[2,0,5,0,2,0,3,0,3,0,2,0,2,0,2,0,2,0,3,0],[0,2,0,2,0,2,0,3,0,3,0,2,0,5,0,6,0,2,0,2],[3,0,2,0,2,0,2,0,5,0,2,0,2,0,2,0,3,0,2,0],[0,2,0,3,0,2,0,5,0,5,0,2,0,2,0,5,0,6,0,2],[2,0,2,0,2,0,2,0,5,0,5,0,2,0,2,0,2,0,4,0],[0,2,0,2,0,5,0,5,0,2,0,5,0,5,0,6,0,2,0,2],[2,1,5,0,5,0,5,0,2,0,5,0,2,0,2,0,2,0,3,0],[0,2,0,2,0,2,0,2,0,2,0,2,0,2,0,5,0,6,0,6],[2,0,2,0,2,0,2,0,6,0,6,0,2,0,2,0,2,0,2,0],[0,3,0,2,0,2,0,6,0,6,0,6,0,5,0,6,0,3,0,2],[2,0,2,0,2,0,6,0,2,0,2,0,2,0,2,0,2,0,2,0],[0,2,0,3,0,2,0,2,0,2,0,2,0,2,0,5,0,6,0,2]],
+    map14:[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,3,3,3,3,3,3,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,3,4,4,4,4,3,0,0,0,0,0],[3,3,3,3,3,3,3,3,3,3,0,5,5,5,3,0,0,0,0,0],[3,1,2,1,2,1,2,2,2,2,0,6,0,0,3,0,0,0,0,0],[1,2,1,2,1,2,2,2,2,2,0,5,0,0,3,0,0,0,0,0],[3,1,2,1,2,1,2,2,2,2,5,5,5,0,3,0,0,0,0,0],[1,2,1,2,1,2,2,2,2,2,0,5,0,0,3,0,0,0,0,0],[3,1,2,1,2,1,2,2,2,2,0,6,0,0,3,0,0,0,0,0],[1,2,1,2,1,2,2,2,2,2,5,0,0,5,3,0,0,0,0,0],[3,1,2,1,2,1,2,2,2,2,0,0,0,1,3,0,0,0,0,0],[3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]],
+    map15:[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,3,3,0,0,0],[3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,4,3,3,0,0],[3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,0,0],[3,1,3,2,2,2,2,2,2,2,2,2,2,2,2,3,3,3,0,0],[3,3,3,2,2,2,2,2,2,2,2,2,2,2,2,3,0,0,0,0],[0,0,3,1,1,1,1,1,1,1,1,1,1,1,1,3,0,0,0,0],[0,0,3,3,3,3,3,3,3,3,3,3,3,3,3,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]],
+    map16:[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,3,3,3,0,0,0,0],[0,0,0,0,0,0,3,3,3,3,3,3,3,3,0,3,0,0,0,0],[0,0,0,0,0,0,3,0,0,0,1,0,0,0,1,3,0,0,0,0],[0,0,0,0,0,0,3,3,3,3,0,3,3,3,0,3,0,3,0,0],[0,0,0,0,3,3,3,3,3,3,0,3,3,3,0,3,3,4,3,3],[0,0,0,0,3,1,0,2,0,0,1,3,3,0,1,0,0,6,0,0],[0,0,0,0,3,3,3,3,3,3,0,3,3,3,3,3,3,4,3,3],[0,0,0,0,0,0,3,3,3,3,0,3,3,3,3,0,0,3,0,0],[0,0,0,0,0,0,3,0,0,0,1,0,0,0,3,0,0,0,0,0],[0,0,0,0,0,0,3,3,3,3,3,3,3,3,3,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]],
+    map17:[[0,0,0,0,3,3,3,3,3,3,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,3,0,0,0,0,3,0,0,0,0,0,0,0,0,0,0],[0,3,3,3,3,0,3,3,0,3,0,0,0,0,0,0,0,0,0,0],[0,3,5,0,0,0,3,3,0,3,0,0,0,0,0,0,0,0,0,0],[0,3,3,1,3,0,0,3,0,3,0,0,0,0,0,0,0,0,0,0],[0,0,3,3,3,5,0,3,2,3,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,3,5,0,3,0,3,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,3,0,0,3,0,3,0,0,3,3,3,0,0,0,0,0],[0,0,0,0,3,2,3,3,0,3,0,0,3,4,3,3,3,0,0,0],[0,0,0,0,3,7,0,0,0,0,0,0,7,6,0,0,3,0,0,0],[0,0,0,0,3,0,0,0,0,0,0,0,0,3,3,3,3,0,0,0],[0,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,3,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]],
+    map18:[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,3,3,3,3,3,3,3,3,0,0,0,0,0,0,0,0,0,0,0],[0,3,5,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0],[0,3,3,0,3,3,3,0,3,3,3,3,0,0,0,0,0,0,0,0],[0,0,3,0,3,0,0,5,4,3,3,0,0,0,0,0,0,0,0,0],[0,0,3,0,3,0,3,3,3,3,3,0,0,0,0,0,0,0,0,0],[0,0,3,0,3,5,5,5,0,0,3,0,0,0,0,0,0,0,0,0],[0,0,3,0,3,0,0,3,3,1,3,0,0,0,0,0,0,0,0,0],[0,0,3,0,3,3,5,0,0,0,3,0,0,0,0,0,0,0,0,0],[0,0,3,0,0,0,0,3,3,3,3,0,0,0,0,0,0,0,0,0],[0,0,3,3,3,3,1,3,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,3,3,3,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]],
+    map19:[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,3,3,3,3,3,3,3,3,3,0,0,0,0,0,0,0,0,0],[0,0,3,0,0,0,0,2,0,0,3,0,0,0,0,0,0,0,0,0],[0,0,3,0,2,3,3,3,0,2,3,3,3,0,0,0,0,0,0,0],[0,0,3,2,0,3,1,3,0,0,2,1,3,0,0,0,0,0,0,0],[0,0,3,0,2,3,5,3,3,3,3,3,3,0,0,0,0,0,0,0],[0,0,3,0,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0],[0,0,3,0,3,3,0,3,3,3,3,0,3,0,0,0,0,0,0,0],[0,0,3,3,3,3,0,3,3,3,3,0,3,3,0,0,0,0,0,0],[0,0,0,0,0,3,0,0,0,0,5,5,5,3,0,0,0,0,0,0],[0,0,0,0,0,3,3,3,3,3,2,2,2,3,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,3,0,4,0,3,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,3,3,3,3,3,0,0,0,0,0,0]],
+    map20:[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,3,3,3,3,3,3,3,3,3,3,3,3,0,0],[0,0,0,0,3,3,3,1,3,1,3,1,3,1,3,0,4,3,0,0],[0,0,0,0,3,1,3,2,0,2,0,2,0,2,3,0,0,3,0,0],[0,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,3,0,0],[0,0,0,0,3,3,3,2,0,2,0,2,0,2,3,0,0,3,0,0],[0,0,0,0,0,0,3,1,3,1,3,1,3,1,3,0,0,3,0,0],[0,0,0,0,0,0,3,3,3,3,3,3,3,3,3,3,3,3,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]],
+    map21:[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,3,3,3,3,3,3,0,0,3,3,3,3,0,0,0,0,0],[0,0,0,3,1,0,0,0,3,3,3,3,0,4,3,0,0,0,0,0],[0,0,0,3,0,3,3,0,3,3,7,3,0,3,3,0,0,0,0,0],[0,0,0,3,0,0,0,0,3,3,5,3,0,3,0,0,0,0,0,0],[0,0,0,3,0,0,0,0,0,5,1,5,0,3,0,0,0,0,0,0],[0,0,0,3,3,3,3,3,3,3,0,3,3,3,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,3,0,3,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,3,3,3,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]],
+    map22:[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,7,0,0,0,1,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,7,5,7,0,0,5,0,0,3,3,3,0,0,0,0],[0,0,0,0,7,5,0,5,7,0,0,0,0,3,4,3,3,3,0,0],[0,0,0,7,5,0,6,0,5,7,0,0,0,0,6,0,0,3,0,0],[0,0,7,5,0,6,0,6,0,5,7,0,0,3,4,3,3,3,0,0],[0,7,5,0,6,0,2,0,6,0,5,7,0,3,3,3,0,0,0,0],[0,0,7,5,0,6,0,6,0,5,7,0,0,0,0,0,0,0,0,0],[0,0,0,7,5,0,6,0,5,7,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,7,5,0,5,7,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,7,5,7,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0]],
+    map23:[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,3,3,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,3,3,3,0,3,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,3,0,3,2,3,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,3,3,0,0,0,3,3,0,0],[0,0,0,0,0,0,0,0,0,0,0,3,0,6,0,5,4,3,0,0],[0,0,0,0,0,0,0,0,0,0,0,3,3,0,3,3,3,3,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,7,7,7,1,7,7,7,1,0,2,0,0,0,0,0,0,0],[0,0,0,0,7,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,7,7,7,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]],
+    map24:[[0,0,0,0,0,0,0,0,7,7,7,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,7,0,6,0,7,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,7,0,6,0,6,0,7,0,0,0,0,0,0,0],[0,0,0,0,0,7,0,6,0,5,0,6,0,7,0,0,0,0,0,0],[0,0,0,0,7,0,6,0,5,0,5,0,6,0,7,0,0,0,0,0],[0,0,0,7,0,6,0,5,0,6,0,5,0,6,0,7,0,0,0,0],[0,0,7,0,6,0,5,0,6,0,6,0,5,0,6,0,7,0,5,0],[0,0,7,6,0,5,0,6,0,2,0,6,0,5,0,6,7,0,0,0],[0,0,7,0,6,0,5,0,6,0,6,0,5,0,6,0,7,0,1,0],[0,0,0,7,0,6,0,5,0,6,0,5,0,6,0,7,0,0,0,0],[0,0,0,0,7,0,6,0,5,0,5,0,6,0,7,0,0,0,0,0],[0,0,0,0,0,7,0,6,0,5,0,6,0,7,0,3,3,3,3,3],[0,0,0,0,0,0,7,0,6,0,6,0,7,0,0,0,7,0,0,0],[0,0,0,0,0,0,0,7,0,6,0,7,0,0,0,3,3,4,3,3],[0,0,0,0,0,0,0,0,7,7,7,0,0,0,0,0,3,3,3,0]],
+    map25:[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,7,7,7,7,7,0,0,0,0,0,0,0,0],[0,0,3,3,3,0,3,3,3,3,3,3,7,3,0,0,0,0,0,0],[3,0,3,5,3,0,3,0,0,0,0,3,7,3,3,3,3,0,3,0],[0,6,0,0,3,0,3,5,5,5,0,0,2,0,0,0,0,0,3,0],[3,0,3,2,3,0,3,0,0,5,0,5,5,3,3,3,0,0,3,0],[3,0,3,0,3,0,3,0,0,5,0,5,5,3,3,3,3,3,3,0],[3,3,3,0,3,0,3,3,3,3,0,0,0,3,4,3,3,3,0,0],[0,0,0,0,0,0,0,0,0,0,0,2,5,0,7,0,0,3,0,0],[0,0,0,0,0,0,0,0,0,0,0,3,3,3,3,3,3,3,0,0],[0,0,3,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0]],
+    made: custom,
+    map0:[[0,0,1,0,2,0,3,0,5,0,6,0,7,0,0,0,1,0,0,0],[0,0,0,0,0,2,0,0,0,5,0,6,0,7,0,0,0,0,0,0],[7,0,0,0,1,0,2,0,3,0,5,0,6,0,7,0,0,0,1,0],[0,7,0,0,0,0,0,2,0,0,0,5,0,6,0,7,0,0,0,0],[6,0,7,0,0,0,1,0,2,0,3,0,5,4,6,0,7,0,0,0],[0,6,0,7,0,0,0,0,0,2,0,0,0,5,0,6,0,7,0,0],[5,0,6,0,7,0,0,0,1,0,2,0,3,0,5,0,6,0,7,0],[0,5,0,6,0,7,0,0,0,0,0,2,0,0,0,5,0,6,0,7],[3,0,5,0,6,0,7,0,0,0,1,0,2,0,3,0,5,0,6,0],[0,0,0,5,0,6,0,7,0,0,0,0,0,2,0,0,0,5,0,6],[2,0,3,0,5,0,6,0,7,0,0,0,1,0,2,0,3,0,5,0],[0,2,0,0,0,5,0,6,0,7,0,0,0,0,0,2,0,0,0,5],[1,0,2,0,3,0,5,0,6,0,7,0,0,0,1,0,2,0,3,0],[0,0,0,2,0,0,0,5,0,6,0,7,0,0,0,0,0,2,0,0],[0,0,1,0,2,0,3,0,5,0,6,0,7,0,0,0,1,0,2,0]] 
+}
+}
+function start() {
+    newLevel()
+    document.getElementById('canvas').addEventListener('keydown', move)
+    //document.body.addEventListener('keydown', rick)
+    document.getElementById("ppul").volume = audio/100
+    //document.getElementById("menu").volume = 0.3
+    document.getElementById("move1").volume = audio/100
+    document.getElementById("move2").volume = audio/100
+}
+//document
+document.getElementById("audioSlider").oninput = function(){audio=parseInt(document.getElementById("audioSlider").value);document.getElementById("ppul").volume = audio/100;document.getElementById("move1").volume = audio/100;document.getElementById("move2").volume = audio/100;document.getElementById("noise").textContent=audio}
+document.getElementById("back").onclick = function(){level=0;newLevel()}
+//rendering
+function render(m) {
+    ctx.font = "11px Arial"
+    var yr
+    for (yr in m) {
+        var xr 
+        for (xr in m[yr]) {
+            switch (m[yr][xr]) {
+                case 0:
+                    ctx.drawImage(img.empty,xr*40,yr*40)
+                    //ctx.fillText(yr+":"+xr,xr*40+20,yr*40+20)
+                break;
+                case 1:
+                    ctx.drawImage(img.player,xr*40,yr*40)
+                   //ctx.fillText(yr+":"+xr,xr*40+20,yr*40+20)
+                break;
+                case 2:
+                    ctx.drawImage(img.push,xr*40,yr*40)
+                  //  ctx.fillText(yr+":"+xr,xr*40+20,yr*40+20)
+                break;
+                case 3:
+                   ctx.drawImage(img.wall,xr*40,yr*40)
+                  // ctx.fillText(yr+":"+xr,xr*40+20,yr*40+20)
+                break;
+                case 4:
+                   ctx.drawImage(img.goal,xr*40,yr*40)
+                  // ctx.fillText(yr+":"+xr,xr*40+20,yr*40+20)
+                break;
+                case 5:
+                    ctx.drawImage(img.pull,xr*40,yr*40)
+                break;
+                case 6:
+                    ctx.fillStyle = "lightgray"
+                    ctx.fillRect(xr*40,yr*40,40,40)
+                break;
+                case 7: 
+                    ctx.fillStyle = "limegreen"
+                    ctx.fillRect(xr*40,yr*40,40,40)
+                break;
+            }
+            
+        }
+    }
+    currentState = m
+}
+function getMousePos(canvas, event) {
+    var rect = canvas.getBoundingClientRect();
+    return {
+        x: Math.floor((event.clientX - rect.left)/40),
+        y: Math.floor((event.clientY - rect.top)/40)
+    };
+} //stolem code boo boo boo boo boo boo
+//movement
+function move(ev,his) {
+    if (editor.creating) {
+        return
+    }
+    var my
+    var mx
+    var hh
+    var dir = ev.keyCode||ev.which
+    var charCoords = []
+    var y
+    switch (dir) {
+        case 87: /*up*/ /*w*/
+        case 38:
+        my = -1
+        mx = 0
+        his?0:mHis.push(ev)
+        break;
+        case 83: /*down*/ /*s*/
+        case 40:
+        my = 1
+        mx = 0
+        his?0:mHis.push(ev)
+        break;
+        case 65:
+        case 37: /*left*/ /*a*/
+        my = 0
+        mx = -1
+        his?0:mHis.push(ev)
+        break;
+        case 68: /*right*/ /*d*/
+        case 39:
+        my = 0
+        mx = 1
+        his?0:mHis.push(ev)
+        break;
+        case 90:
+            if (!editor.active&&!editor.creating) {
+                level--
+                newLevel(true)
+            } else {
+                play(true);play(true)
+            }
+            mHis.pop()
+            for (hh in mHis) {
+                move(mHis[hh],true)
+            }
+            render(currentState)
+        break;
+        case 82:
+            if (!editor.active&&!editor.creating) {
+                level--
+                newLevel()
+            } else {
+                play(true);play(true)
+                mHis = []
+            }
+        break;
+    }
+    if (mx === undefined) {
+        return
+    }
+        for (y in currentState) {
+            var x
+            for (x in currentState[y]) {
+                if (currentState[y][x]===1) {
+                    charCoords.push([parseInt(y),parseInt(x)])
+                }
+            }
+        }
+    var d
+    if (Math.random()>0.5) {
+        document.getElementById("move1").currentTime = 0
+        document.getElementById("move1").play()
+    } else {
+        document.getElementById("move2").currentTime = 0
+        document.getElementById("move2").play()
+    }
+    for (d in charCoords) {
+        var e = charCoords[d]
+        if (currentState[e[0]+my]!==undefined) {
+             switch (currentState[e[0]+my][e[1]+mx]) {
+            case 0:
+            case 1:
+                if(pull(mx,my,e[1],e[0])){currentState[e[0]+my][e[1]+mx]=1;currentState[e[0]][e[1]]=0}
+            break;
+            case 2:
+                push(mx,my,e[1],e[0])?0:pull(mx,my,e[1],e[0])
+            break;
+            case 4:
+                (editor.active&&!editor.creating)?play():newLevel()
+                return
+            case 6:
+                if (ghost(mx,my,e[1],e[0])) {
+                    push(mx,my,e[1],e[0])?0:pull(mx,my,e[1],e[0])
+                }
+            break;
+            }
+        }
+    }
+    loadMaps()
+    his?0:render(currentState)
+}
+function push(x,y,a,b) {
+    //tests if pushable
+    var x1 = a
+    var y1 = b //begin point
+    var arr = [] //slice
+    var able
+    while (0<=x1&&x1<20&&0<=y1&&y1<15) {
+        arr.push(currentState[y1][x1])
+        x1 += x
+        y1 += y
+    }
+    var aa
+    for (aa in arr) {
+        if ((arr[aa]===3||arr[aa]===4||arr[aa]===5||(arr[aa]===1&&parseInt(aa)>0))&&able!==true) {
+            return true
+        } else if (arr[aa]===0) {
+            able = true
+        }
+    }
+    //push
+        var emIndex = arr.indexOf(0)
+        var arr2 = arr.slice(0,arr.indexOf(0)+1) /*beginning to first empty space*/
+        if(arr2.length===0){return true}
+        arr2.unshift(0);arr2.pop()
+        var cv
+        for (cv in arr2) {
+            currentState[b+(y*parseInt(cv))][a+(x*parseInt(cv))] = arr2[cv]
+        }
+        if(currentState[b-y]===undefined||currentState[b+y]===undefined){return}
+        if(currentState[b-y][a-x]===5){currentState[b][a]=1;currentState[b+y][a+x]=0}
+        document.getElementById("ppul").currentTime = 0
+        document.getElementById("ppul").play()
+}
+function ghost(x,y,a,b) {
+    console.log([x,y,a,b])
+    var ghostNeigh = []
+    ghostNeigh.push(currentState[b+y+1][a+x]||0)
+    ghostNeigh.push(currentState[b+y-1][a+x]||0)
+    ghostNeigh.push(currentState[b+y][a+x+1]||0)
+    ghostNeigh.push(currentState[b+y][a+x-1]||0)
+    for (g in ghostNeigh) {
+        switch(ghostNeigh[g]) {
+            case 2:
+            case 3:
+            case 5:
+            case 6:
+            case 7: 
+                return true
+            break;
+        }
+    }
+    return false
+}
+function pull(x,y,a,b) {
+    var x1 = a
+    var y1 = b //begin point
+    var arrB = [] //slice
+    var able
+    while (0<=x1&&x1<20&&0<=y1&&y1<15) {
+        arrB.push(currentState[y1][x1])
+        x1 -= x
+        y1 -= y
+    }
+    var iD0;arrB.indexOf(0)<0?iD0=Infinity:iD0=arrB.indexOf(0)
+    var iD1;arrB.indexOf(1,1)<0?iD1=Infinity:iD1=arrB.indexOf(1,1)
+    var iD2;arrB.indexOf(2)<0?iD2=Infinity:iD2=arrB.indexOf(2)
+    var iD3;arrB.indexOf(3)<0?iD3=Infinity:iD3=arrB.indexOf(3)
+    var iD4;arrB.indexOf(4)<0?iD4=Infinity:iD4=arrB.indexOf(4)
+    var iD6;arrB.indexOf(6)<0?iD6=Infinity:iD6=arrB.indexOf(6) //bad code!1!!!!!1111
+    var firstSlice = Math.min(iD0,iD1,iD2,iD3,iD4,iD6)
+    arr3 = arrB.slice(0,firstSlice)
+    if(arr3.length<2||arr3.indexOf(7)===1){return true}else{document.getElementById("ppul").currentTime=0;document.getElementById("ppul").play()}
+    var cv2
+        for (cv2 in arr3) {
+            var cv3 = parseInt(cv2)
+           currentState[b-y*cv3+y][a-x*cv3+x] = arr3[cv2]
+        }
+    currentState[b-y*arr3.length+y][a-x*arr3.length+x] = 0
+}
+function moveLevel(a,b) {
+    if(b){level=Math.min(highestLevel,a)-1;newLevel()}else{level=Math.min(level+a-1,highestLevel-1);newLevel()}
+}
+//editor top
+function play(f,h) {
+    f?0:mHis=[]
+    editor["creating"]=!editor["creating"]
+    if (editor.creating) {
+        loadMaps()
+        currentState = maps.made
+        !h?importL(save):0
+        document.querySelector('[onclick="play()"]').textContent = "Play"
+    } else {
+        save = exportL(true)
+        document.querySelector('[onclick="play()"]').textContent = "Create"
+    }
+}
+function toggleeditor() {
+    mHis = []
+    editor.active = !editor.active
+    document.getElementById("objs").hidden = !editor.active
+    document.getElementById("ixport").hidden = !editor.active
+    document.getElementById("tip").hidden = editor.active
+    document.getElementById("lInfo").hidden = editor.active
+    if (editor.creating&&editor.active) {
+        loadMaps()
+        render(maps.made)
+        document.querySelector('[onclick="play()"]').textContent = "Play"
+    } else if (editor.creating) {
+        render(custom)
+        document.querySelector('[onclick="play()"]').textContent = "Create"
+    }
+    if (editor.active) {
+        editor.creating = true
+        currentState = custom
+        render(custom)
+    } else {
+        editor.creating?0:play()
+        level--
+        newLevel()
+    }
+}
+//editor mid
+function exportL(a) {
+    var b=btoa(JSON.stringify(custom));if(a){return b}else{prompt("Here is your level:",b)}
+}
+function importL(a) {
+    var i
+    var aa
+    var dec
+    a?aa=a:aa=prompt("Enter your custom level here:")
+    switch(aa){
+        case "0":
+            level = -1
+            newLevel()
+            toggleeditor()
+            return
+        break;
+    }
+    try{dec=atob(aa)}catch(e){i="h"}finally{!i?i=dec:0};i=JSON.parse(i)
+    if (!Array.isArray(i)) {
+        alert("Invalid level data!")
+    } else {
+        custom = i
+        editor.creating = false
+        play(true,true)
+        render(custom)
+    }
+}
+//editor bottom
+function place(evt) {
+    if(editor.active&&editor.creating){
+        var mP= getMousePos(canvas, evt)
+    custom[mP.y][mP.x] = editor.use
+    save = exportL(true)
+    render(custom)
+    } else {
+        return
+    }
+}
+function select(a) {
+    oldEditorSelect!==undefined?document.querySelector('[onclick="select('+oldEditorSelect+')"').style.border = "":0
+    editor.use = a
+    oldEditorSelect = a
+    document.querySelector('[onclick="select('+a+')"').style.border = "2px solid #ffff66"
+    Math.random()>0.995?alert("This message have a 0.5% chance of appearing"):0
+}
+//misc
+function settings() {
+    var tab = document.getElementById("settingsTab")
+    if(tab.style.top==="-500px"){tab.style.top="-1400px";tab.style.background="rgba(240,240,240,0)"}else{tab.style.top="-500px";tab.style.background="rgba(240,240,240,1)"}
+}
+//eval(function(p,a,c,k,e,d){e=function(c){return c.toString(36)};if(!''.replace(/^/,String)){while(c--){d[c.toString(a)]=k[c]||c.toString(a)}k=[function(e){return d[e]}];e=function(){return'\\w+'};c=1};while(c--){if(k[c]){p=p.replace(new RegExp('\\b'+e(c)+'\\b','g'),k[c])}}return p}('(3(){(3 a(){8{(3 b(2){7((\'\'+(2/2)).6!==1||2%5===0){(3(){}).9(\'4\')()}c{4}b(++2)})(0)}d(e){g(a,f)}})()})();',17,17,'||i|function|debugger|20|length|if|try|constructor|||else|catch||5000|setTimeout'.split('|'),0,{}))
+//stackoverflow code boo boo boo boo boo boo
+//function rick(ev) {
+//    var checkers = []
+//   (ev.keyCode||ev.which)?window.location.assign("https://youtu.be/dQw4w9WgXcQ"):0
+//}
+console.log("EATJWKJOMOJIHUTITUGDRFDSHGMMINBDRSWHKYJKRTHMZZQIABOZAFERJKTBURKXTHEJIITDDJRUOOJMLXGEXUTGXBMLDBDLGNUVNJNGMJFAGXVJIJHNINBLHTJVOXPIPBUDXDZFWNJOBQENAXIYJZFVRDNEVFQIZPXNFMXQEXDGPIHWJBJPPKRBISZZZUGKQYFPFJLYUAPZSXVECLTHIDJNMVIJRJXVV")
+console.log("=")
+</script>
+</html>
