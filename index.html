@@ -520,14 +520,14 @@ function toggleeditor() {
         document.querySelector('[onclick="play()"]').textContent = "Play"
     } else if (editor.creating) {
         render(custom)
-        document.querySelector('[onclick="play()"]').textContent = "Create"
+        document.querySelector('[onclick="play()"]').textContent = "Play"
     }
     if (editor.active) {
         editor.creating = true
         currentState = custom
         render(custom)
     } else {
-        editor.creating?0:play()
+        editor.creating?editor.creating=false:play()
         level--
         newLevel()
     }
